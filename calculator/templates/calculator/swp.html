@@ -1,0 +1,132 @@
+{% extends 'calculator/base.html' %}
+{% block title %}SWP Calculator{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="breadcrumb"><a href="{% url 'calculator:index' %}">InvestIQ</a> / SWP Calculator</div>
+  <h1 class="page-title">💸 SWP Calculator</h1>
+  <p class="page-subtitle">Plan sustainable monthly withdrawals from your retirement corpus</p>
+</div>
+
+<div class="calc-layout">
+  <div class="form-panel">
+    <h2>Parameters</h2>
+    <form method="POST">
+      {% csrf_token %}
+      <div class="form-group">
+        <label>Total Corpus (₹)</label>
+        <input type="number" name="corpus" value="{{ form_data.corpus|default:'' }}" placeholder="e.g. 5000000" min="1" required>
+      </div>
+      <div class="form-group">
+        <label>Monthly Withdrawal (₹)</label>
+        <input type="number" name="withdrawal" value="{{ form_data.withdrawal|default:'' }}" placeholder="e.g. 30000" min="1" required>
+      </div>
+      <div class="form-group">
+        <label>Expected Annual Return (%)</label>
+        <input type="number" name="rate" step="0.01" value="{{ form_data.rate|default:'' }}" placeholder="e.g. 8" min="0" required>
+      </div>
+      <div class="form-group">
+        <label>Withdrawal Period (Years)</label>
+        <input type="number" name="years" value="{{ form_data.years|default:'' }}" placeholder="e.g. 25" min="1" max="60" required>
+      </div>
+      <button type="submit" class="btn-calc">Calculate →</button>
+    </form>
+  </div>
+
+  <div class="results-panel">
+    {% if result %}
+      {% if result.error %}
+        <div class="error-banner">⚠ {{ result.error }}</div>
+      {% else %}
+        {% if result.sustainable %}
+          <div class="status-badge ok">✓ Corpus is sustainable for {{ result.years }} years</div>
+        {% else %}
+          <div class="status-badge warn">⚠ Corpus depletes in year {{ result.depletion_year }}</div>
+        {% endif %}
+
+        <div class="results-grid">
+          <div class="stat-card">
+            <div class="stat-label">Total Corpus</div>
+            <div class="stat-value neutral">₹{{ result.corpus|floatformat:0 }}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Total Withdrawn</div>
+            <div class="stat-value amber">₹{{ result.total_withdrawn|floatformat:0 }}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Final Balance</div>
+            <div class="stat-value {% if result.sustainable %}positive{% else %}negative{% endif %}">₹{{ result.final_balance|floatformat:0 }}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Monthly Withdrawal</div>
+            <div class="stat-value positive">₹{{ result.withdrawal|floatformat:0 }}</div>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <h3>Corpus Balance Over Time</h3>
+          <div class="chart-wrapper">
+            <canvas id="swpChart"></canvas>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <h3>Year-by-Year Corpus Track</h3>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr><th>Year</th><th>Withdrawn</th><th>Remaining Balance</th></tr>
+              </thead>
+              <tbody>
+                {% for row in yearly_data %}
+                <tr>
+                  <td>{{ row.year }}</td>
+                  <td class="td-amber">₹{{ row.withdrawn|floatformat:0 }}</td>
+                  <td class="{% if row.balance > 0 %}td-green{% else %}td-red{% endif %}">₹{{ row.balance|floatformat:0 }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <script>
+        (function(){
+          const labels   = [{% for r in yearly_data %}'Y{{ r.year }}'{% if not forloop.last %},{% endif %}{% endfor %}];
+          const balances = [{% for r in yearly_data %}{{ r.balance }}{% if not forloop.last %},{% endif %}{% endfor %}];
+
+          new Chart(document.getElementById('swpChart'), {
+            type: 'line',
+            data: {
+              labels,
+              datasets: [{
+                label: 'Remaining Balance',
+                data: balances,
+                borderColor: '{% if result.sustainable %}#10b981{% else %}#ef4444{% endif %}',
+                backgroundColor: '{% if result.sustainable %}rgba(16,185,129,0.1){% else %}rgba(239,68,68,0.1){% endif %}',
+                fill: true,
+                tension: 0.3,
+              }]
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+              scales: {
+                x: { ticks: { color: '#7a92b0' }, grid: { color: '#1e2d42' } },
+                y: { ticks: { color: '#7a92b0', callback: v => '₹' + v.toLocaleString() }, grid: { color: '#1e2d42' } }
+              }
+            }
+          });
+        })();
+        </script>
+      {% endif %}
+    {% else %}
+      <div class="empty-state">
+        <div class="es-icon">💸</div>
+        <h3>Enter your retirement details</h3>
+        <p>Check if your corpus can sustain your desired monthly withdrawals.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
