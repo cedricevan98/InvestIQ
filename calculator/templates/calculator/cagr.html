@@ -1,0 +1,111 @@
+{% extends 'calculator/base.html' %}
+{% block title %}CAGR Calculator{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="breadcrumb"><a href="{% url 'calculator:index' %}">InvestIQ</a> / CAGR Calculator</div>
+  <h1 class="page-title">📊 CAGR Calculator</h1>
+  <p class="page-subtitle">Measure your investment's compounded annual growth rate</p>
+</div>
+
+<div class="calc-layout">
+  <div class="form-panel">
+    <h2>Parameters</h2>
+    <form method="POST">
+      {% csrf_token %}
+      <div class="form-group">
+        <label>Beginning Value (₹)</label>
+        <input type="number" name="beginning" step="0.01" value="{{ form_data.beginning|default:'' }}" placeholder="e.g. 100000" min="0.01" required>
+      </div>
+      <div class="form-group">
+        <label>Ending Value (₹)</label>
+        <input type="number" name="ending" step="0.01" value="{{ form_data.ending|default:'' }}" placeholder="e.g. 250000" min="0.01" required>
+      </div>
+      <div class="form-group">
+        <label>Number of Years</label>
+        <input type="number" name="years" step="0.5" value="{{ form_data.years|default:'' }}" placeholder="e.g. 5" min="0.5" required>
+      </div>
+      <button type="submit" class="btn-calc">Calculate →</button>
+    </form>
+  </div>
+
+  <div class="results-panel">
+    {% if result %}
+      {% if result.error %}
+        <div class="error-banner">⚠ {{ result.error }}</div>
+      {% else %}
+        <div class="results-grid">
+          <div class="stat-card">
+            <div class="stat-label">CAGR</div>
+            <div class="stat-value {% if result.positive %}positive{% else %}negative{% endif %}">{{ result.cagr }}%</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Absolute Return</div>
+            <div class="stat-value {% if result.positive %}amber{% else %}negative{% endif %}">{{ result.absolute_return }}%</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Net Gain / Loss</div>
+            <div class="stat-value {% if result.positive %}positive{% else %}negative{% endif %}">₹{{ result.gain|floatformat:0 }}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Period</div>
+            <div class="stat-value neutral">{{ result.years }} Yrs</div>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <h3>Beginning vs Ending Value</h3>
+          <div class="chart-wrapper">
+            <canvas id="cagrChart"></canvas>
+          </div>
+        </div>
+
+        <div class="form-panel" style="position:static;">
+          <h2>Summary</h2>
+          <div class="info-row"><span>Beginning Value</span><span>₹{{ result.beginning|floatformat:2 }}</span></div>
+          <div class="divider"></div>
+          <div class="info-row"><span>Ending Value</span><span>₹{{ result.ending|floatformat:2 }}</span></div>
+          <div class="divider"></div>
+          <div class="info-row"><span>Investment Period</span><span>{{ result.years }} years</span></div>
+          <div class="divider"></div>
+          <div class="info-row"><span>CAGR</span><span style="color:var(--green)">{{ result.cagr }}% p.a.</span></div>
+          <div class="divider"></div>
+          <div class="info-row"><span>Absolute Return</span><span style="color:var(--amber)">{{ result.absolute_return }}%</span></div>
+        </div>
+
+        <script>
+        (function(){
+          new Chart(document.getElementById('cagrChart'), {
+            type: 'bar',
+            data: {
+              labels: ['Beginning Value', 'Ending Value'],
+              datasets: [{
+                data: [{{ result.beginning }}, {{ result.ending }}],
+                backgroundColor: ['rgba(59,130,246,0.6)', '{% if result.positive %}rgba(16,185,129,0.6){% else %}rgba(239,68,68,0.6){% endif %}'],
+                borderColor:     ['#3b82f6', '{% if result.positive %}#10b981{% else %}#ef4444{% endif %}'],
+                borderWidth: 2,
+                borderRadius: 8,
+              }]
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+              scales: {
+                x: { ticks: { color: '#7a92b0' }, grid: { display: false } },
+                y: { ticks: { color: '#7a92b0', callback: v => '₹' + v.toLocaleString() }, grid: { color: '#1e2d42' } }
+              }
+            }
+          });
+        })();
+        </script>
+      {% endif %}
+    {% else %}
+      <div class="empty-state">
+        <div class="es-icon">📊</div>
+        <h3>Enter investment values</h3>
+        <p>Input your beginning and ending investment values to calculate CAGR.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
