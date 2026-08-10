@@ -1,0 +1,24 @@
+{% extends 'calculator/base.html' %}
+{% block title %}InvestIQ{% endblock %}
+
+{% block content %}
+<div class="hero">
+  <div class="hero-badge">✦ 6 Calculators · 100% Free · No Signup</div>
+  <h1>Smart Tools for <span>Smarter</span> Investing</h1>
+  <p>Plan, analyze, and grow your wealth with professional-grade investment calculators — all powered by Django.</p>
+</div>
+
+<div class="tools-grid">
+  {% for tool in tools %}
+  <a href="{% url tool.url %}" class="tool-card" style="--accent-color: {{ tool.color }};">
+    <div class="card-header">
+      <span class="card-icon">{{ tool.icon }}</span>
+      <span class="card-tag">{{ tool.tag }}</span>
+    </div>
+    <div class="card-title">{{ tool.name }}</div>
+    <div class="card-desc">{{ tool.description }}</div>
+    <div class="card-arrow">Open Calculator →</div>
+  </a>
+  {% endfor %}
+</div>
+{% endblock %}
