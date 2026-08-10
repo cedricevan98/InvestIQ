@@ -1,0 +1,106 @@
+{% extends 'calculator/base.html' %}
+{% block title %}ROI Calculator{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="breadcrumb"><a href="{% url 'calculator:index' %}">InvestIQ</a> / ROI Calculator</div>
+  <h1 class="page-title">🎯 ROI Calculator</h1>
+  <p class="page-subtitle">Calculate total and annualized return on your investment</p>
+</div>
+
+<div class="calc-layout">
+  <div class="form-panel">
+    <h2>Parameters</h2>
+    <form method="POST">
+      {% csrf_token %}
+      <div class="form-group">
+        <label>Initial Investment (₹)</label>
+        <input type="number" name="initial" step="0.01" value="{{ form_data.initial|default:'' }}" placeholder="e.g. 50000" min="0.01" required>
+      </div>
+      <div class="form-group">
+        <label>Final Value (₹)</label>
+        <input type="number" name="final" step="0.01" value="{{ form_data.final|default:'' }}" placeholder="e.g. 80000" min="0" required>
+      </div>
+      <div class="form-group">
+        <label>Investment Period (Years)</label>
+        <input type="number" name="period" step="0.25" value="{{ form_data.period|default:'' }}" placeholder="e.g. 3" min="0.25" required>
+      </div>
+      <button type="submit" class="btn-calc">Calculate →</button>
+    </form>
+  </div>
+
+  <div class="results-panel">
+    {% if result %}
+      {% if result.error %}
+        <div class="error-banner">⚠ {{ result.error }}</div>
+      {% else %}
+        <div class="results-grid">
+          <div class="stat-card">
+            <div class="stat-label">ROI</div>
+            <div class="stat-value {% if result.positive %}positive{% else %}negative{% endif %}">{{ result.roi }}%</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Annualized ROI</div>
+            <div class="stat-value {% if result.positive %}amber{% else %}negative{% endif %}">{{ result.annualized_roi }}%</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Net Profit</div>
+            <div class="stat-value {% if result.positive %}positive{% else %}negative{% endif %}">₹{{ result.net_profit|floatformat:0 }}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Period</div>
+            <div class="stat-value neutral">{{ result.period }} Yrs</div>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <h3>Investment vs Returns</h3>
+          <div class="chart-wrapper">
+            <canvas id="roiChart"></canvas>
+          </div>
+        </div>
+
+        <div class="form-panel" style="position:static;">
+          <h2>Breakdown</h2>
+          <div class="info-row"><span>Initial Investment</span><span>₹{{ result.initial|floatformat:2 }}</span></div>
+          <div class="divider"></div>
+          <div class="info-row"><span>Final Value</span><span>₹{{ result.final|floatformat:2 }}</span></div>
+          <div class="divider"></div>
+          <div class="info-row"><span>Net Profit / Loss</span><span style="color:{% if result.positive %}var(--green){% else %}var(--red){% endif %}">₹{{ result.net_profit|floatformat:2 }}</span></div>
+          <div class="divider"></div>
+          <div class="info-row"><span>Total ROI</span><span style="color:var(--amber)">{{ result.roi }}%</span></div>
+          <div class="divider"></div>
+          <div class="info-row"><span>Annualized ROI</span><span style="color:var(--green)">{{ result.annualized_roi }}% p.a.</span></div>
+        </div>
+
+        <script>
+        (function(){
+          new Chart(document.getElementById('roiChart'), {
+            type: 'doughnut',
+            data: {
+              labels: ['Initial Investment', '{% if result.positive %}Profit{% else %}Loss{% endif %}'],
+              datasets: [{
+                data: [{{ result.initial }}, Math.abs({{ result.net_profit }})],
+                backgroundColor: ['rgba(59,130,246,0.7)', '{% if result.positive %}rgba(16,185,129,0.7){% else %}rgba(239,68,68,0.7){% endif %}'],
+                borderColor: ['#3b82f6', '{% if result.positive %}#10b981{% else %}#ef4444{% endif %}'],
+                borderWidth: 2,
+              }]
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false, cutout: '65%',
+              plugins: { legend: { labels: { color: '#7a92b0' } } }
+            }
+          });
+        })();
+        </script>
+      {% endif %}
+    {% else %}
+      <div class="empty-state">
+        <div class="es-icon">🎯</div>
+        <h3>Enter your investment details</h3>
+        <p>Calculate how much return you've earned on your investment.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
