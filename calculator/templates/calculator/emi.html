@@ -1,0 +1,114 @@
+{% extends 'calculator/base.html' %}
+{% block title %}EMI Calculator{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="breadcrumb"><a href="{% url 'calculator:index' %}">InvestIQ</a> / EMI Calculator</div>
+  <h1 class="page-title">🏦 EMI Calculator</h1>
+  <p class="page-subtitle">Calculate loan EMI with a full amortization schedule</p>
+</div>
+
+<div class="calc-layout">
+  <div class="form-panel">
+    <h2>Parameters</h2>
+    <form method="POST">
+      {% csrf_token %}
+      <div class="form-group">
+        <label>Loan Amount (₹)</label>
+        <input type="number" name="principal" value="{{ form_data.principal|default:'' }}" placeholder="e.g. 1000000" min="1" required>
+      </div>
+      <div class="form-group">
+        <label>Annual Interest Rate (%)</label>
+        <input type="number" name="rate" step="0.01" value="{{ form_data.rate|default:'' }}" placeholder="e.g. 8.5" min="0" required>
+      </div>
+      <div class="form-group">
+        <label>Loan Tenure (Years)</label>
+        <input type="number" name="tenure" value="{{ form_data.tenure|default:'' }}" placeholder="e.g. 20" min="1" max="30" required>
+      </div>
+      <button type="submit" class="btn-calc">Calculate →</button>
+    </form>
+  </div>
+
+  <div class="results-panel">
+    {% if result %}
+      {% if result.error %}
+        <div class="error-banner">⚠ {{ result.error }}</div>
+      {% else %}
+        <div class="results-grid">
+          <div class="stat-card">
+            <div class="stat-label">Monthly EMI</div>
+            <div class="stat-value positive">₹{{ result.emi|floatformat:0 }}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Total Payment</div>
+            <div class="stat-value neutral">₹{{ result.total_payment|floatformat:0 }}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Total Interest</div>
+            <div class="stat-value amber">₹{{ result.total_interest|floatformat:0 }}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Interest %</div>
+            <div class="stat-value amber">{{ result.interest_pct }}%</div>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <h3>Principal vs Interest Split</h3>
+          <div class="chart-wrapper">
+            <canvas id="emiChart"></canvas>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <h3>Amortization Schedule (Yearly)</h3>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr><th>Year</th><th>Principal Paid</th><th>Interest Paid</th><th>Balance</th></tr>
+              </thead>
+              <tbody>
+                {% for row in schedule %}
+                <tr>
+                  <td>{{ row.year }}</td>
+                  <td class="td-green">₹{{ row.principal_paid|floatformat:0 }}</td>
+                  <td class="td-amber">₹{{ row.interest_paid|floatformat:0 }}</td>
+                  <td class="td-blue">₹{{ row.balance|floatformat:0 }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <script>
+        (function(){
+          new Chart(document.getElementById('emiChart'), {
+            type: 'doughnut',
+            data: {
+              labels: ['Principal', 'Total Interest'],
+              datasets: [{
+                data: [{{ result.principal }}, {{ result.total_interest }}],
+                backgroundColor: ['rgba(59,130,246,0.7)', 'rgba(245,158,11,0.7)'],
+                borderColor: ['#3b82f6', '#f59e0b'],
+                borderWidth: 2,
+              }]
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false, cutout: '60%',
+              plugins: { legend: { labels: { color: '#7a92b0' } } }
+            }
+          });
+        })();
+        </script>
+      {% endif %}
+    {% else %}
+      <div class="empty-state">
+        <div class="es-icon">🏦</div>
+        <h3>Enter your loan details</h3>
+        <p>Calculate monthly EMI and see the full amortization breakdown.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
