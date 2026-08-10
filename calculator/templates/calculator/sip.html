@@ -1,0 +1,120 @@
+{% extends 'calculator/base.html' %}
+{% block title %}SIP Calculator{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="breadcrumb"><a href="{% url 'calculator:index' %}">InvestIQ</a> / SIP Calculator</div>
+  <h1 class="page-title">💰 SIP Calculator</h1>
+  <p class="page-subtitle">Estimate wealth from systematic monthly investments</p>
+</div>
+
+<div class="calc-layout">
+  <div class="form-panel">
+    <h2>Parameters</h2>
+    <form method="POST">
+      {% csrf_token %}
+      <div class="form-group">
+        <label>Monthly Investment (₹)</label>
+        <input type="number" name="monthly" value="{{ form_data.monthly|default:'' }}" placeholder="e.g. 5000" min="1" required>
+      </div>
+      <div class="form-group">
+        <label>Expected Annual Return (%)</label>
+        <input type="number" name="rate" step="0.01" value="{{ form_data.rate|default:'' }}" placeholder="e.g. 12" min="0" required>
+      </div>
+      <div class="form-group">
+        <label>Investment Period (Years)</label>
+        <input type="number" name="years" value="{{ form_data.years|default:'' }}" placeholder="e.g. 15" min="1" max="50" required>
+      </div>
+      <button type="submit" class="btn-calc">Calculate →</button>
+    </form>
+  </div>
+
+  <div class="results-panel">
+    {% if result %}
+      {% if result.error %}
+        <div class="error-banner">⚠ {{ result.error }}</div>
+      {% else %}
+        <div class="results-grid">
+          <div class="stat-card">
+            <div class="stat-label">Final Value</div>
+            <div class="stat-value positive">₹{{ result.final_value|floatformat:0 }}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Total Invested</div>
+            <div class="stat-value neutral">₹{{ result.total_invested|floatformat:0 }}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Est. Returns</div>
+            <div class="stat-value amber">₹{{ result.total_returns|floatformat:0 }}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Wealth Gained</div>
+            <div class="stat-value positive">{{ result.wealth_gained }}%</div>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <h3>Invested vs Portfolio Value</h3>
+          <div class="chart-wrapper">
+            <canvas id="sipChart"></canvas>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <h3>Year-by-Year Growth</h3>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr><th>Year</th><th>Invested</th><th>Portfolio Value</th><th>Gains</th></tr>
+              </thead>
+              <tbody>
+                {% for row in yearly_data %}
+                <tr>
+                  <td>{{ row.year }}</td>
+                  <td class="td-blue">₹{{ row.invested|floatformat:0 }}</td>
+                  <td class="td-green">₹{{ row.value|floatformat:0 }}</td>
+                  <td class="td-amber">₹{{ row.gains|floatformat:0 }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <script>
+        (function(){
+          const labels   = [{% for r in yearly_data %}'Y{{ r.year }}'{% if not forloop.last %},{% endif %}{% endfor %}];
+          const invested = [{% for r in yearly_data %}{{ r.invested }}{% if not forloop.last %},{% endif %}{% endfor %}];
+          const values   = [{% for r in yearly_data %}{{ r.value }}{% if not forloop.last %},{% endif %}{% endfor %}];
+
+          new Chart(document.getElementById('sipChart'), {
+            type: 'line',
+            data: {
+              labels,
+              datasets: [
+                { label: 'Portfolio Value', data: values, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', fill: true, tension: 0.4 },
+                { label: 'Amount Invested', data: invested, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.05)', fill: true, tension: 0.4, borderDash: [5,3] },
+              ]
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              plugins: { legend: { labels: { color: '#7a92b0', boxWidth: 12 } } },
+              scales: {
+                x: { ticks: { color: '#7a92b0' }, grid: { color: '#1e2d42' } },
+                y: { ticks: { color: '#7a92b0', callback: v => '₹' + v.toLocaleString() }, grid: { color: '#1e2d42' } }
+              }
+            }
+          });
+        })();
+        </script>
+      {% endif %}
+    {% else %}
+      <div class="empty-state">
+        <div class="es-icon">💰</div>
+        <h3>Enter your SIP details</h3>
+        <p>See how a fixed monthly investment grows into significant wealth over time.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
