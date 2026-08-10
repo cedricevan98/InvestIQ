@@ -1,0 +1,131 @@
+{% extends 'calculator/base.html' %}
+{% block title %}Compound Interest{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="breadcrumb"><a href="{% url 'calculator:index' %}">InvestIQ</a> / Compound Interest</div>
+  <h1 class="page-title">📈 Compound Interest Calculator</h1>
+  <p class="page-subtitle">Watch your money grow exponentially over time</p>
+</div>
+
+<div class="calc-layout">
+  <!-- Form -->
+  <div class="form-panel">
+    <h2>Parameters</h2>
+    <form method="POST">
+      {% csrf_token %}
+      <div class="form-group">
+        <label>Principal Amount (₹)</label>
+        <input type="number" name="principal" value="{{ form_data.principal|default:'' }}" placeholder="e.g. 100000" min="1" required>
+      </div>
+      <div class="form-group">
+        <label>Annual Interest Rate (%)</label>
+        <input type="number" name="rate" step="0.01" value="{{ form_data.rate|default:'' }}" placeholder="e.g. 12" min="0" required>
+      </div>
+      <div class="form-group">
+        <label>Time Period (Years)</label>
+        <input type="number" name="years" value="{{ form_data.years|default:'' }}" placeholder="e.g. 10" min="1" max="50" required>
+      </div>
+      <div class="form-group">
+        <label>Compounding Frequency</label>
+        <select name="frequency">
+          <option value="1"  {% if form_data.frequency == '1'  %}selected{% endif %}>Annually</option>
+          <option value="4"  {% if form_data.frequency == '4'  %}selected{% endif %}>Quarterly</option>
+          <option value="12" {% if form_data.frequency == '12' or not form_data.frequency %}selected{% endif %}>Monthly</option>
+          <option value="365"{% if form_data.frequency == '365'%}selected{% endif %}>Daily</option>
+        </select>
+      </div>
+      <button type="submit" class="btn-calc">Calculate →</button>
+    </form>
+  </div>
+
+  <!-- Results -->
+  <div class="results-panel">
+    {% if result %}
+      {% if result.error %}
+        <div class="error-banner">⚠ {{ result.error }}</div>
+      {% else %}
+        <div class="results-grid">
+          <div class="stat-card">
+            <div class="stat-label">Final Amount</div>
+            <div class="stat-value positive">₹{{ result.final_amount|floatformat:0 }}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Total Interest</div>
+            <div class="stat-value amber">₹{{ result.total_interest|floatformat:0 }}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Principal</div>
+            <div class="stat-value neutral">₹{{ result.principal|floatformat:0 }}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Wealth Multiplier</div>
+            <div class="stat-value positive">{{ result.multiplier }}x</div>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <h3>Growth Over Time</h3>
+          <div class="chart-wrapper">
+            <canvas id="compoundChart"></canvas>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <h3>Year-by-Year Breakdown</h3>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr><th>Year</th><th>Total Amount</th><th>Interest Earned</th></tr>
+              </thead>
+              <tbody>
+                {% for row in yearly_data %}
+                <tr>
+                  <td>{{ row.year }}</td>
+                  <td class="td-green">₹{{ row.amount|floatformat:2 }}</td>
+                  <td class="td-amber">₹{{ row.interest|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <script>
+        (function(){
+          const labels = [{% for r in yearly_data %}'Y{{ r.year }}'{% if not forloop.last %},{% endif %}{% endfor %}];
+          const amounts   = [{% for r in yearly_data %}{{ r.amount }}{% if not forloop.last %},{% endif %}{% endfor %}];
+          const interests = [{% for r in yearly_data %}{{ r.interest }}{% if not forloop.last %},{% endif %}{% endfor %}];
+          const principal = {{ result.principal }};
+
+          new Chart(document.getElementById('compoundChart'), {
+            type: 'bar',
+            data: {
+              labels,
+              datasets: [
+                { label: 'Principal', data: labels.map(() => principal), backgroundColor: 'rgba(59,130,246,0.5)', stack: 'a' },
+                { label: 'Interest',  data: interests, backgroundColor: 'rgba(16,185,129,0.7)', stack: 'a' },
+              ]
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              plugins: { legend: { labels: { color: '#7a92b0', boxWidth: 12 } } },
+              scales: {
+                x: { stacked: true, ticks: { color: '#7a92b0' }, grid: { color: '#1e2d42' } },
+                y: { stacked: true, ticks: { color: '#7a92b0', callback: v => '₹' + v.toLocaleString() }, grid: { color: '#1e2d42' } }
+              }
+            }
+          });
+        })();
+        </script>
+      {% endif %}
+    {% else %}
+      <div class="empty-state">
+        <div class="es-icon">📈</div>
+        <h3>Enter your parameters</h3>
+        <p>Fill in the form to see how your investment grows with compound interest.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
